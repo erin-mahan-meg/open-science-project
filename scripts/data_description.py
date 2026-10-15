@@ -1,17 +1,7 @@
 #!/usr/bin/env python3
 """Import the simulated epilepsy data and make a descriptive-statistics table."""
 
-import os
-import tempfile
 from pathlib import Path
-
-# Use a writable temporary folder for Matplotlib's font cache.
-cache_dir = Path(tempfile.gettempdir()) / "epilepsy-descriptive-matplotlib"
-cache_dir.mkdir(parents=True, exist_ok=True)
-os.environ.setdefault("MPLCONFIGDIR", str(cache_dir))
-os.environ.setdefault("XDG_CACHE_HOME", str(cache_dir))
-
-import matplotlib.pyplot as plt
 import pandas as pd
 
 
@@ -21,125 +11,107 @@ data_file = project_dir / "data" / "simulated_epilepsy_surgery_raw.csv"
 output_dir = project_dir / "outputs"
 output_dir.mkdir(exist_ok=True)
 
-
-# 1. Import the raw data.
+# Import the data and define columns
 data = pd.read_csv(data_file)
+outcome = "engel_outcome_1yr"
+engel_classes = ["I", "II", "III", "IV"]
 
-# 2. Exclude the patient identifier and calculate descriptive statistics.
-# Numeric variables receive means, quartiles, and ranges. Categorical variables
-# receive the number of levels and their most common value.
-analysis_data = data.drop(columns="patient_id")
-summary = analysis_data.describe(include="all").transpose()
+# Define the groups that will become columns in the table.
+groups = {f"Engel {label}": data[data[outcome] == label] for label in engel_classes}
+groups["Total"] = data
 
-# 3. Add missing-data information and a simple variable-type label.
-summary.insert(
-    0,
-    "type",
-    [
-        "numeric"
-        if pd.api.types.is_numeric_dtype(analysis_data[column])
-        else "categorical"
-        for column in summary.index
-    ],
-)
-summary.insert(2, "missing", analysis_data.isna().sum())
-summary.insert(3, "missing_percent", 100 * analysis_data.isna().mean())
-summary["most_common_percent"] = 100 * summary["freq"] / summary["count"]
+# Add the sample size to each column heading.
+column_names = {
+    name: f"{name}\n(n={len(group)})" for name, group in groups.items()
+}
 
-summary = summary.rename(
-    columns={
-        "count": "n",
-        "unique": "levels",
-        "top": "most_common",
-        "freq": "most_common_count",
-        "std": "standard_deviation",
-        "25%": "first_quartile",
-        "50%": "median",
-        "75%": "third_quartile",
-        "min": "minimum",
-        "max": "maximum",
-    }
-)
-summary.index.name = "variable"
+# functions to get the descriptive stats that we care about
+def mean_sd(values: pd.Series) -> str:
+    values = values.dropna()
+    if values.empty:
+        return ""
+    return f"{values.mean():.1f} ({values.std():.1f})"
 
-# 4. Save the statistics as a CSV file.
-summary_file = output_dir / "descriptive_statistics.csv"
-summary.to_csv(summary_file)
 
-# 5. Make a table-style chart with variables as rows and statistics as columns.
-plot_table = summary.reset_index().copy()
-plot_table["variable"] = plot_table["variable"].str.replace("_", " ")
+def median_iqr(values: pd.Series) -> str:
+    values = values.dropna()
+    if values.empty:
+        return ""
+    return f"{values.median():.1f} [{values.quantile(0.25):.1f}, {values.quantile(0.75):.1f}]"
 
-for column in plot_table.columns:
-    if column not in ["variable", "type", "most_common"]:
-        plot_table[column] = plot_table[column].map(
-            lambda value: "" if pd.isna(value) else f"{float(value):.2f}"
-        )
-plot_table = plot_table.fillna("")
 
-plot_table = plot_table.rename(
-    columns={
-        "variable": "Variable",
-        "type": "Type",
-        "n": "N",
-        "missing": "Missing",
-        "missing_percent": "Missing %",
-        "mean": "Mean",
-        "standard_deviation": "SD",
-        "minimum": "Min",
-        "first_quartile": "Q1",
-        "median": "Median",
-        "third_quartile": "Q3",
-        "maximum": "Max",
-        "levels": "Levels",
-        "most_common": "Most common",
-        "most_common_count": "Count",
-        "most_common_percent": "%",
-    }
-)
+def count_percent(values: pd.Series, level: object) -> str:
+    denominator = values.notna().sum()
+    if denominator == 0:
+        return ""
+    count = (values == level).sum()
+    return f"{count} ({100 * count / denominator:.1f}%)"
 
-figure, axis = plt.subplots(figsize=(24, 14))
-axis.axis("off")
-axis.set_title(
-    "Descriptive statistics for the simulated epilepsy-surgery cohort",
-    fontsize=16,
-    fontweight="bold",
-    loc="left",
-    pad=18,
-)
 
-table = axis.table(
-    cellText=plot_table.values,
-    colLabels=plot_table.columns,
-    cellLoc="center",
-    colLoc="center",
-    loc="upper left",
-    bbox=[0, 0, 1, 0.96],
-)
-table.auto_set_font_size(False)
-table.set_fontsize(7.5)
+def missing_count_percent(values: pd.Series) -> str:
+    count = values.isna().sum()
+    return f"{count} ({100 * count / len(values):.1f}%)"
 
-column_widths = {column: 0.05 for column in range(len(plot_table.columns))}
-column_widths[0] = 0.18  # Variable names
-column_widths[1] = 0.08  # Variable type
-column_widths[6] = 0.14  # Most common category
 
-for (row, column), cell in table.get_celld().items():
-    cell.set_edgecolor("#D1D5DB")
-    cell.set_linewidth(0.5)
-    cell.set_width(column_widths[column])
-    if row == 0:
-        cell.set_facecolor("#274C77")
-        cell.set_text_props(color="white", weight="bold")
+rows = []
+row_types = []
+
+# Start with the number of observations in each outcome group.
+cohort_row = {"Variable": "Cohort, n"}
+for name, group in groups.items():
+    cohort_row[column_names[name]] = str(len(group))
+rows.append(cohort_row)
+row_types.append("cohort")
+
+# Exclude the identifier and outcome because the outcome defines the columns.
+variables = [
+    column for column in data.columns if column not in ["patient_id", outcome]
+]
+
+for variable in variables:
+    label = variable.replace("_", " ")
+
+    if pd.api.types.is_numeric_dtype(data[variable]):
+        mean_row = {"Variable": f"{label}, mean (SD)"}
+        median_row = {"Variable": "    median [Q1, Q3]"}
+
+        for name, group in groups.items():
+            mean_row[column_names[name]] = mean_sd(group[variable])
+            median_row[column_names[name]] = median_iqr(group[variable])
+
+        rows.extend([mean_row, median_row])
+        row_types.extend(["numeric_main", "detail"])
+
     else:
-        cell.set_facecolor("#F7FAFC" if row % 2 == 0 else "white")
-        if column in [0, 1, 6]:
-            cell.get_text().set_ha("left")
+        # Add a section heading, then one row for every observed category.
+        header_row = {"Variable": f"{label}, n (%)"}
+        for name in groups:
+            header_row[column_names[name]] = ""
+        rows.append(header_row)
+        row_types.append("categorical_header")
 
-figure_file = output_dir / "descriptive_statistics_table.png"
-figure.savefig(figure_file, dpi=180, bbox_inches="tight", facecolor="white")
-plt.close(figure)
+        levels = data[variable].dropna().drop_duplicates().tolist()
+        for level in levels:
+            level_row = {"Variable": f"    {level}"}
+            for name, group in groups.items():
+                level_row[column_names[name]] = count_percent(group[variable], level)
+            rows.append(level_row)
+            row_types.append("detail")
 
-print(f"Imported {len(data)} rows and {len(data.columns)} columns.")
-print(f"Saved descriptive statistics to: {summary_file}")
-print(f"Saved summary chart to: {figure_file}")
+    # Show missingness only where the raw dataset actually contains missing data.
+    if data[variable].isna().any():
+        missing_row = {"Variable": "    Missing"}
+        for name, group in groups.items():
+            missing_row[column_names[name]] = missing_count_percent(group[variable])
+        rows.append(missing_row)
+        row_types.append("missing")
+
+
+summary = pd.DataFrame(rows)
+
+# Save the underlying table as a CSV file.
+summary_file = output_dir / "descriptive_statistics_by_engel.csv"
+summary.to_csv(summary_file, index=False)
+
+print(summary.to_string(index=False))
+print(f"Saved table to: {summary_file}")
