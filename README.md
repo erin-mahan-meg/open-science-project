@@ -2,7 +2,7 @@
 A project demonstrating reproducible research using Python.
 
 
-## Packages needed
+## Packages neededs
 os 
 pathlib
 pandas — data manipulation and descriptive statistics
