@@ -1,6 +1,7 @@
 # general file types to ignore
 *.png
 outputs/
+simulated_epilepsy_surgery_clean.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
