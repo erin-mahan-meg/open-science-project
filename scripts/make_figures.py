@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Create the two main figures for the Quarto report."""
+"""Create figures for the Quarto report."""
 
 import os
 import tempfile
@@ -16,6 +17,7 @@ from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy.stats import kruskal, spearmanr
 
 
 # This script is stored in project_folder/scripts/ and the CSV is in data/.
@@ -35,8 +37,52 @@ engel_colors = {
 sns.set_theme(style="whitegrid", context="notebook")
 
 
+def format_p_value(p_value):
+    """Format a p-value for compact display in a figure."""
+    return "p < 0.001" if p_value < 0.001 else f"p = {p_value:.3f}"
+
+
+def run_statistical_tests():
+    """Return the overall statistical tests used in the two figures."""
+    concordance_data = data.dropna(
+        subset=["multimodal_concordance_count", "engel_outcome_1yr"]
+    ).copy()
+    concordance_data["engel_outcome_numeric"] = concordance_data[
+        "engel_outcome_1yr"
+    ].map({"I": 1, "II": 2, "III": 3, "IV": 4})
+    rho, spearman_p = spearmanr(
+        concordance_data["multimodal_concordance_count"],
+        concordance_data["engel_outcome_numeric"],
+    )
+
+    duration_groups = [
+        data.loc[
+            data["engel_outcome_1yr"] == engel_class,
+            "epilepsy_duration_years",
+        ].dropna()
+        for engel_class in engel_order
+    ]
+    h_statistic, kw_p = kruskal(*duration_groups)
+
+    return {
+        "concordance": {
+            "test": "Spearman rank correlation",
+            "statistic": rho,
+            "p_value": spearman_p,
+            "sample_size": len(concordance_data),
+        },
+        "duration": {
+            "test": "Kruskal-Wallis test",
+            "statistic": h_statistic,
+            "degrees_of_freedom": len(duration_groups) - 1,
+            "p_value": kw_p,
+        },
+    }
+
+
 def plot_concordance_by_outcome():
     """Return a 100% stacked bar chart of Engel outcome by concordance count."""
+    test = run_statistical_tests()["concordance"]
     counts = pd.crosstab(
         data["multimodal_concordance_count"],
         data["engel_outcome_1yr"],
@@ -82,6 +128,18 @@ def plot_concordance_by_outcome():
         )
 
     axis.set_title("Engel outcome by multimodal concordance", fontweight="bold")
+    axis.text(
+        0.5,
+        1.02,
+        (
+            f"Spearman: ρ = {test['statistic']:.2f}, "
+            f"{format_p_value(test['p_value'])}"
+        ),
+        transform=axis.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
     axis.set_xlabel("Number of concordant presurgical modalities")
     axis.set_ylabel("Patients within concordance group")
     axis.set_ylim(0, 109)
@@ -100,6 +158,7 @@ def plot_concordance_by_outcome():
 
 def plot_duration_by_outcome():
     """Return a boxplot and patient-level points for epilepsy duration."""
+    test = run_statistical_tests()["duration"]
     plot_data = data.dropna(
         subset=["engel_outcome_1yr", "epilepsy_duration_years"]
     ).copy()
@@ -138,6 +197,18 @@ def plot_duration_by_outcome():
         [f"Engel {label}\nn={sample_sizes.get(label, 0)}" for label in engel_order],
     )
     axis.set_title("Epilepsy duration by Engel outcome", fontweight="bold")
+    axis.text(
+        0.5,
+        1.02,
+        (
+            f"Kruskal–Wallis: H({test['degrees_of_freedom']}) = "
+            f"{test['statistic']:.2f}, {format_p_value(test['p_value'])}"
+        ),
+        transform=axis.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
     axis.set_xlabel("")
     axis.set_ylabel("Epilepsy duration (years)")
     axis.grid(axis="x", visible=False)
