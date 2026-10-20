@@ -188,10 +188,10 @@ def plot_concordance_by_outcome():
             fontsize=9,
         )
 
-    axis.set_title("Engel outcome by multimodal concordance", fontweight="bold")
+    axis.set_title("Engel outcome by multimodal concordance", fontweight="bold", pad=32)
     axis.text(
         0.5,
-        1.02,
+        1.01,
         (
             f"Spearman: ρ = {test['statistic']:.2f}, "
             f"{format_p_value(test['p_value'])}"
