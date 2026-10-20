@@ -2,6 +2,7 @@
 *.png
 outputs/
 simulated_epilepsy_surgery_clean.csv
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
