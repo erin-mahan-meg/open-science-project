@@ -80,6 +80,68 @@ def run_statistical_tests():
     }
 
 
+def calculate_modality_coverage():
+    """Return counts and percentages of patients receiving each modality."""
+    modality_columns = {
+        "MRI": "mri_performed",
+        "Scalp EEG": "scalp_eeg_performed",
+        "PET": "pet_performed",
+        "MEG": "meg_performed",
+        "Intracranial EEG": "intracranial_eeg_performed",
+    }
+    total_patients = len(data)
+
+    coverage = pd.DataFrame(
+        [
+            {
+                "modality": modality,
+                "patients": data[column].eq("Yes").sum(),
+                "total_patients": total_patients,
+            }
+            for modality, column in modality_columns.items()
+        ]
+    )
+    coverage["percentage"] = (
+        coverage["patients"] / coverage["total_patients"] * 100
+    )
+    return coverage.sort_values("percentage", ascending=True).reset_index(drop=True)
+
+
+def plot_modality_coverage():
+    """Return a horizontal bar chart of presurgical modality coverage."""
+    coverage = calculate_modality_coverage()
+
+    figure, axis = plt.subplots(figsize=(8, 5))
+    bars = axis.barh(
+        coverage["modality"],
+        coverage["percentage"],
+        color="#3B82A0",
+        edgecolor="white",
+        height=0.68,
+    )
+
+    labels = [
+        f"{row.percentage:.1f}% ({row.patients}/{row.total_patients})"
+        for row in coverage.itertuples()
+    ]
+    axis.bar_label(
+        bars,
+        labels=labels,
+        padding=5,
+        fontsize=10,
+    )
+
+    axis.set_title("Presurgical modality coverage", fontweight="bold")
+    axis.set_xlabel("Patients who received the modality")
+    axis.set_ylabel("")
+    axis.set_xlim(0, 112)
+    axis.xaxis.set_major_formatter(PercentFormatter(100))
+    axis.grid(axis="y", visible=False)
+    sns.despine(ax=axis)
+    figure.tight_layout()
+    return figure
+
+
 def plot_concordance_by_outcome():
     """Return a 100% stacked bar chart of Engel outcome by concordance count."""
     test = run_statistical_tests()["concordance"]
@@ -218,6 +280,7 @@ def plot_duration_by_outcome():
 
 
 if __name__ == "__main__":
+    plot_modality_coverage()
     plot_concordance_by_outcome()
     plot_duration_by_outcome()
     plt.show()
