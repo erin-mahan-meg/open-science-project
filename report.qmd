@@ -1,0 +1,97 @@
+---
+title: "A simulated epilepsy surgery cohort"
+subtitle: "A reproducible data generation, cleaning, and analysis workflow"
+author: "Erin Mahan"
+format:
+  html:
+    toc: true
+    code-fold: true
+    embed-resources: true
+jupyter: python3
+execute:
+  warning: false
+  message: false
+---
+## Introduction
+This project uses a fully simulated cohort of patients who underwent epilepsy surgery. The dataset was created to practise reproducible research workflows with Git, GitHub, Python, and Quarto. It contains no real patient information.
+The report follows the data from its initial inspection through cleaning and descriptive analysis. The main analysis examines whether agreement among presurgical evaluation modalities is associated with one-year Engel outcome.
+
+## Initial data inspection
+The raw dataset was deliberately generated with a small number of missing, inconsistent, duplicate, and implausible observations. The inspection script identifies the affected patient IDs without modifying the original data.
+```{python}
+#| label: inspect-raw-data
+#| echo: true
+#| output: false
+%run scripts/data_description.py
+```
+The raw dataset contains `{python} len(data)` rows representing `{python} data['patient_id'].nunique()` unique patient IDs. The following table lists the observations flagged for review.
+```{python}
+#| label: tbl-data-quality
+#| tbl-cap: "Patient records with missing, inconsistent, duplicate, or implausible data."
+#| echo: false
+issue_table.style.hide(axis='index')
+```
+## Data cleaning
+The cleaning script preserves the raw CSV and creates a separate cleaned dataset. It removes exact duplicate rows, standardizes the inconsistent localization label, replaces implausible onset ages and seizure frequencies with missing values, and recalculates epilepsy duration from the available ages.
+```{python}
+#| label: clean-data
+#| echo: true
+%run scripts/data_cleaning.py
+```
+After cleaning, the dataset contains `{python} len(clean_data)` unique patient records.
+
+## Cohort characteristics
+The descriptive table is calculated from the cleaned dataset and stratified by one-year Engel outcome. Continuous variables are summarized using the mean and standard deviation and the median and interquartile range. Categorical variables are shown as counts and percentages.
+```{python}
+#| label: create-descriptive-table
+#| echo: true
+#| output: false
+%run scripts/descriptive_statistics.py
+```
+```{python}
+#| label: tbl-cohort-characteristics
+#| tbl-cap: "Characteristics of the cleaned simulated cohort by one-year Engel outcome."
+#| echo: false
+
+(
+    summary.style
+    .hide(axis="index")
+    .set_properties(**{"text-align": "left"})
+    .set_table_styles([
+        {
+            "selector": "th",
+            "props": [
+                ("text-align", "left"),
+                ("font-weight", "bold"),
+                ("background-color", "#f2f2f2"),
+            ],
+        }
+    ])
+)
+```
+## Presurgical evaluation
+MRI and scalp EEG were performed for nearly all patients, while PET, MEG, and intracranial EEG were used more selectively.
+```{python}
+#| label: fig-modality-coverage
+#| fig-cap: "Percentage of patients who received each presurgical evaluation modality."
+#| fig-width: 8
+#| fig-height: 5
+#| echo: false
+from scripts.make_figures import plot_modality_coverage
+modality_figure = plot_modality_coverage()
+```
+## Multimodal concordance and surgical outcome
+The number of concordant presurgical modalities was compared with the ordered Engel outcome using Spearman rank correlation. Lower Engel classes represent better one-year surgical outcomes.
+```{python}
+#| label: fig-concordance-outcome
+#| fig-cap: "One-year Engel outcome by the number of concordant presurgical modalities."
+#| fig-width: 8
+#| fig-height: 5.5
+#| echo: false
+from scripts.make_figures import plot_concordance_by_outcome
+concord_fig = plot_concordance_by_outcome()
+```
+The simulated cohort showed a small association between greater multimodal concordance and better surgical outcome. This analysis is descriptive and exploratory and should not be interpreted as evidence from real patients.
+
+## Conclusion
+This project demonstrates a reproducible workflow in which simulated data are inspected, cleaned, summarized, and analysed using separate scripts. Keeping the raw data unchanged and generating all cleaned data, tables, and figures from code makes each stage transparent and repeatable.
