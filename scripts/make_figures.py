@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Create the two main figures for the Quarto report."""
 """Create figures for the Quarto report."""
 
 import os
@@ -217,70 +216,7 @@ def plot_concordance_by_outcome():
     figure.tight_layout()
     return figure
 
-
-def plot_duration_by_outcome():
-    """Return a boxplot and patient-level points for epilepsy duration."""
-    test = run_statistical_tests()["duration"]
-    plot_data = data.dropna(
-        subset=["engel_outcome_1yr", "epilepsy_duration_years"]
-    ).copy()
-
-    figure, axis = plt.subplots(figsize=(8, 5.5))
-
-    sns.boxplot(
-        data=plot_data,
-        x="engel_outcome_1yr",
-        y="epilepsy_duration_years",
-        order=engel_order,
-        color="#B8D4E8",
-        width=0.55,
-        showfliers=False,
-        linewidth=1.2,
-        ax=axis,
-    )
-
-    # Set a seed so the point jitter is reproducible when the report is rerendered.
-    np.random.seed(20261020)
-    sns.stripplot(
-        data=plot_data,
-        x="engel_outcome_1yr",
-        y="epilepsy_duration_years",
-        order=engel_order,
-        color="#24445C",
-        alpha=0.48,
-        size=3.5,
-        jitter=0.22,
-        ax=axis,
-    )
-
-    sample_sizes = plot_data["engel_outcome_1yr"].value_counts()
-    axis.set_xticks(
-        range(len(engel_order)),
-        [f"Engel {label}\nn={sample_sizes.get(label, 0)}" for label in engel_order],
-    )
-    axis.set_title("Epilepsy duration by Engel outcome", fontweight="bold")
-    axis.text(
-        0.5,
-        1.02,
-        (
-            f"Kruskal–Wallis: H({test['degrees_of_freedom']}) = "
-            f"{test['statistic']:.2f}, {format_p_value(test['p_value'])}"
-        ),
-        transform=axis.transAxes,
-        ha="center",
-        va="bottom",
-        fontsize=10,
-    )
-    axis.set_xlabel("")
-    axis.set_ylabel("Epilepsy duration (years)")
-    axis.grid(axis="x", visible=False)
-    sns.despine(ax=axis)
-    figure.tight_layout()
-    return figure
-
-
 if __name__ == "__main__":
     plot_modality_coverage()
     plot_concordance_by_outcome()
-    plot_duration_by_outcome()
     plt.show()
