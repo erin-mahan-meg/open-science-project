@@ -13,11 +13,14 @@ execute:
   message: false
 ---
 ## Introduction
-This project uses a fully simulated cohort of patients who underwent epilepsy surgery. The dataset was created to practise reproducible research workflows with Git, GitHub, Python, and Quarto. It contains no real patient information.
-The report follows the data from its initial inspection through cleaning and descriptive analysis. The main analysis examines whether agreement among presurgical evaluation modalities is associated with one-year Engel outcome.
+This project uses a retrospective cohort of patients who underwent epilepsy surgery. The dataset was simulated using plausible relationships between variables for the purposes of practicing reproducible research workflows with Git, GitHub, Python, and Quarto. It contains no real patient information.
+
+The main analysis examines whether agreement among presurgical evaluation modalities is associated with one-year Engel outcome.
+
+The following report walks through the steps of the analysis, from data inspection to figure generation and statistical analysis.
 
 ## Initial data inspection
-The raw dataset was deliberately generated with a small number of missing, inconsistent, duplicate, and implausible observations. The inspection script identifies the affected patient IDs without modifying the original data.
+The raw dataset was deliberately generated with a small number of plausible errors in a retrospective medical records analysis, such as missing fields, inconsistencies in capitalization, or improbable values. The inspection script identifies the affected patient IDs for the researcher to decide how to fix the issue.
 ```{python}
 #| label: inspect-raw-data
 #| echo: true
@@ -33,6 +36,8 @@ issue_table.style.hide(axis='index')
 ```
 ## Data cleaning
 The cleaning script preserves the raw CSV and creates a separate cleaned dataset. It removes exact duplicate rows, standardizes the inconsistent localization label, replaces implausible onset ages and seizure frequencies with missing values, and recalculates epilepsy duration from the available ages.
+
+Later analyses should utilize the cleaned data.
 ```{python}
 #| label: clean-data
 #| echo: true
@@ -41,7 +46,7 @@ The cleaning script preserves the raw CSV and creates a separate cleaned dataset
 After cleaning, the dataset contains `{python} len(clean_data)` unique patient records.
 
 ## Cohort characteristics
-The descriptive table is calculated from the cleaned dataset and stratified by one-year Engel outcome. Continuous variables are summarized using the mean and standard deviation and the median and interquartile range. Categorical variables are shown as counts and percentages.
+The descriptive table is calculated from the cleaned dataset and stratified by one-year Engel outcome. Continuous variables are summarized using the mean and standard deviation. Categorical variables are shown as counts and percentages.
 ```{python}
 #| label: create-descriptive-table
 #| echo: true
@@ -69,8 +74,10 @@ The descriptive table is calculated from the cleaned dataset and stratified by o
     ])
 )
 ```
+The dataset contains records from adult and pediatric epilepsy cases. The average age at surgery was 33.9 ± 19.4 years. With an average presurgical epilepsy duration (from diagnosis to surgery) of 19 ± 14.1 years. The most common localization was temporal (57.7%), followed by frontal (20.0%).The most common surgery type was a tie between temporal resection and lesionectomy (32.7% and 32.7% respectively). 
+
 ## Presurgical evaluation
-MRI and scalp EEG were performed for nearly all patients, while PET, MEG, and intracranial EEG were used more selectively.
+ MRI and scalp EEG were performed for nearly all patients, while PET, MEG, and intracranial EEG were used more selectively. 
 ```{python}
 #| label: fig-modality-coverage
 #| fig-cap: "Percentage of patients who received each presurgical evaluation modality."
@@ -81,7 +88,7 @@ from scripts.make_figures import plot_modality_coverage
 modality_figure = plot_modality_coverage()
 ```
 ## Multimodal concordance and surgical outcome
-The number of concordant presurgical modalities was compared with the ordered Engel outcome using Spearman rank correlation. Lower Engel classes represent better one-year surgical outcomes.
+The number of concordant presurgical modalities was compared with the ordered Engel outcome using Spearman rank correlation. Lower Engel classes represent better one-year surgical outcomes. 
 ```{python}
 #| label: fig-concordance-outcome
 #| fig-cap: "One-year Engel outcome by the number of concordant presurgical modalities."
@@ -91,7 +98,4 @@ The number of concordant presurgical modalities was compared with the ordered En
 from scripts.make_figures import plot_concordance_by_outcome
 concord_fig = plot_concordance_by_outcome()
 ```
-The simulated cohort showed a small association between greater multimodal concordance and better surgical outcome. This analysis is descriptive and exploratory and should not be interpreted as evidence from real patients.
-
-## Conclusion
-This project demonstrates a reproducible workflow in which simulated data are inspected, cleaned, summarized, and analysed using separate scripts. Keeping the raw data unchanged and generating all cleaned data, tables, and figures from code makes each stage transparent and repeatable.
+The simulated cohort showed a small association between greater multimodal concordance and better surgical outcome. 
