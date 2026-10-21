@@ -13,10 +13,9 @@ os.environ.setdefault("XDG_CACHE_HOME", str(cache_dir))
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
-import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy.stats import kruskal, spearmanr
+from scipy.stats import spearmanr
 
 
 # This script is stored in project_folder/scripts/ and the CSV is in data/.
@@ -42,7 +41,7 @@ def format_p_value(p_value):
 
 
 def run_statistical_tests():
-    """Return the overall statistical tests used in the two figures."""
+    """Return the overall statistical tests used in the figure."""
     concordance_data = data.dropna(
         subset=["multimodal_concordance_count", "engel_outcome_1yr"]
     ).copy()
@@ -54,28 +53,13 @@ def run_statistical_tests():
         concordance_data["engel_outcome_numeric"],
     )
 
-    duration_groups = [
-        data.loc[
-            data["engel_outcome_1yr"] == engel_class,
-            "epilepsy_duration_years",
-        ].dropna()
-        for engel_class in engel_order
-    ]
-    h_statistic, kw_p = kruskal(*duration_groups)
-
     return {
         "concordance": {
             "test": "Spearman rank correlation",
             "statistic": rho,
             "p_value": spearman_p,
             "sample_size": len(concordance_data),
-        },
-        "duration": {
-            "test": "Kruskal-Wallis test",
-            "statistic": h_statistic,
-            "degrees_of_freedom": len(duration_groups) - 1,
-            "p_value": kw_p,
-        },
+        }
     }
 
 
