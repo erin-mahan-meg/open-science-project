@@ -15,6 +15,7 @@ data = pd.read_csv(data_file)
 outcome = "engel_outcome_1yr"
 engel_classes = ["I", "II", "III", "IV"]
 
+#create one group for each Engel outcome plus the full cohort
 groups = {f"Engel {label}": data[data[outcome] == label] for label in engel_classes}
 groups["Total"] = data
 column_names = {
@@ -27,17 +28,6 @@ def mean_sd(values: pd.Series) -> str:
     if values.empty:
         return ""
     return f"{values.mean():.1f} ({values.std():.1f})"
-
-
-def median_iqr(values: pd.Series) -> str:
-    values = values.dropna()
-    if values.empty:
-        return ""
-    return (
-        f"{values.median():.1f} "
-        f"[{values.quantile(0.25):.1f}, {values.quantile(0.75):.1f}]"
-    )
-
 
 def count_percent(values: pd.Series, level: object) -> str:
     denominator = values.notna().sum()
@@ -61,7 +51,7 @@ rows.append(cohort_row)
 variables = [
     column for column in data.columns if column not in ["patient_id", outcome]
 ]
-
+# based on variable type, return the appropriate descriptive value for the chart 
 for variable in variables:
     label = variable.replace("_", " ")
 
