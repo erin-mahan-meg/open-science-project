@@ -67,11 +67,9 @@ for variable in variables:
 
     if pd.api.types.is_numeric_dtype(data[variable]):
         mean_row = {"Variable": f"{label}, mean (SD)"}
-        median_row = {"Variable": "    median [Q1, Q3]"}
         for name, group in groups.items():
             mean_row[column_names[name]] = mean_sd(group[variable])
-            median_row[column_names[name]] = median_iqr(group[variable])
-        rows.extend([mean_row, median_row])
+        rows.extend([mean_row])
     else:
         header_row = {"Variable": f"{label}, n (%)"}
         for name in groups:
